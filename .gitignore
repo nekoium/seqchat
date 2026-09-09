@@ -1,1 +1,35 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Product drafts remain local after their initial tracked snapshot
 drafts/
+
+# Generated data
+data/*
+!data/.gitkeep
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/.venv/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
