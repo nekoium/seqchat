@@ -1,5 +1,5 @@
-import { FormEvent, useState } from 'react'
-import { askQuestion, type QueryResult } from './api'
+import { FormEvent, useEffect, useState } from 'react'
+import { askQuestion, getReadiness, type QueryResult, type ReadinessResult } from './api'
 import './styles.css'
 
 const GOLDEN_QUESTION = 'How many subjects are in each planned treatment group?'
@@ -9,6 +9,24 @@ export default function App() {
   const [result, setResult] = useState<QueryResult | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [readiness, setReadiness] = useState<ReadinessResult | null>(null)
+  const [readinessError, setReadinessError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    getReadiness()
+      .then((value) => {
+        if (active) setReadiness(value)
+      })
+      .catch((caught: unknown) => {
+        if (active) {
+          setReadinessError(
+            caught instanceof Error ? caught.message : 'Cannot reach the SeqChat backend.',
+          )
+        }
+      })
+    return () => { active = false }
+  }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -32,6 +50,28 @@ export default function App() {
         <h1>Ask the dataset</h1>
         <p className="lede">SeqChat turns one question into validated SQL and shows the evidence behind its answer.</p>
       </header>
+
+      <aside
+        className={`readiness ${readiness?.status === 'ready' ? 'ready' : 'warning'}`}
+        aria-live="polite"
+        aria-label="SeqChat readiness"
+      >
+        {!readiness && !readinessError && <p>Checking backend readiness…</p>}
+        {readinessError && (
+          <p><strong>Backend unreachable.</strong> {readinessError} Start FastAPI and check the Vite proxy.</p>
+        )}
+        {readiness?.status === 'ready' && (
+          <p><strong>Ready.</strong> Backend, ADSL database, and model configuration are ready.</p>
+        )}
+        {readiness?.status === 'not_ready' && (
+          <div>
+            <strong>Setup required.</strong>
+            {Object.values(readiness.components)
+              .filter((component) => component.status === 'not_ready')
+              .map((component) => <p key={component.code}>{component.message}</p>)}
+          </div>
+        )}
+      </aside>
 
       <form onSubmit={submit} aria-label="Ask SeqChat">
         <label htmlFor="question">Question</label>

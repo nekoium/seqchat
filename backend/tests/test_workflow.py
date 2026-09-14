@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from seqchat.llm import ProviderError
+from seqchat.llm import ModelResponseError, ProviderError
 from seqchat.models import GeneratedQuery
 from seqchat.workflow import QueryWorkflow
 
@@ -31,7 +31,15 @@ class DeterministicFakeModel:
 
 class FailingFakeModel(DeterministicFakeModel):
     def generate_query(self, *, question: str, schema: str) -> GeneratedQuery:
-        raise ProviderError("secret raw provider response")
+        raise ProviderError("provider_http_error", "The model provider returned an HTTP error")
+
+
+class InvalidStructuredFakeModel(DeterministicFakeModel):
+    def generate_query(self, *, question: str, schema: str) -> GeneratedQuery:
+        self.calls.append("generation")
+        raise ModelResponseError(
+            "model_parse_error", "The model returned invalid structured SQL output"
+        )
 
 
 def test_fixed_graph_runs_all_stages(database_path: Path) -> None:
@@ -51,9 +59,21 @@ def test_validation_failure_stops_before_execution_and_answer(database_path: Pat
     assert model.calls == ["generation"]
 
 
+def test_invalid_structured_output_stops_before_validation_execution_and_answer(
+    database_path: Path,
+) -> None:
+    model = InvalidStructuredFakeModel()
+    result = QueryWorkflow(database_path, model).invoke("Count subjects")
+    assert result["error"].code == "model_parse_error"
+    assert result["error"].stage == "generation"
+    assert "validated_sql" not in result
+    assert "rows" not in result
+    assert model.calls == ["generation"]
+
+
 def test_provider_failure_is_controlled_and_safe(database_path: Path) -> None:
     result = QueryWorkflow(database_path, FailingFakeModel()).invoke("Count subjects")
-    assert result["error"].code == "provider_error"
+    assert result["error"].code == "provider_http_error"
     assert "secret" not in result["error"].message
 
 

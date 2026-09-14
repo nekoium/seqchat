@@ -57,10 +57,10 @@ class QueryWorkflow:
                 question=state["question"], schema=state["schema"]
             )
             return {"current_stage": stage, "generated_sql": generated.sql}
-        except ModelResponseError:
-            return _error(stage, "model_parse_error", "The model returned invalid query data")
-        except ProviderError:
-            return _error(stage, "provider_error", "The model could not generate a query")
+        except ModelResponseError as error:
+            return _error(stage, error.code, error.safe_message)
+        except ProviderError as error:
+            return _error(stage, error.code, error.safe_message)
         except Exception:
             return _error(stage, "generation_error", "Query generation failed")
 
@@ -108,8 +108,8 @@ class QueryWorkflow:
                 rows=cast(list[list[object]], state["rows"]),
             )
             return {"current_stage": stage, "answer": answer}
-        except ProviderError:
-            return _error(stage, "provider_error", "The model could not explain the result")
+        except ProviderError as error:
+            return _error(stage, error.code, error.safe_message)
         except Exception:
             return _error(stage, "answer_error", "Answer generation failed")
 

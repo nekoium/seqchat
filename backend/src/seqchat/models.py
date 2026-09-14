@@ -2,14 +2,24 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Stage = Literal["input", "schema", "generation", "validation", "execution", "answer"]
 
 
 class GeneratedQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sql: str = Field(min_length=1)
-    rationale: str = ""
+    rationale: str
+
+    @field_validator("sql")
+    @classmethod
+    def sql_must_not_be_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("SQL must not be blank")
+        return stripped
 
 
 class QueryRequest(BaseModel):
@@ -33,6 +43,17 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class ComponentReadiness(BaseModel):
+    status: Literal["ready", "not_ready"]
+    code: str
+    message: str
+
+
+class ReadinessResponse(BaseModel):
+    status: Literal["ready", "not_ready"]
+    components: dict[str, ComponentReadiness]
 
 
 class WorkflowState(TypedDict, total=False):

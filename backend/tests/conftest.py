@@ -11,6 +11,19 @@ import pytest
 from seqchat import data
 
 
+@pytest.fixture(autouse=True)
+def isolate_seqchat_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (
+        "SEQCHAT_LLM_BASE_URL",
+        "SEQCHAT_LLM_API_KEY",
+        "SEQCHAT_LLM_MODEL",
+        "SEQCHAT_LLM_JSON_MODE",
+        "SEQCHAT_DATABASE_PATH",
+        "SEQCHAT_FRONTEND_ORIGIN",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def dataset_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     names = ["USUBJID", "TRT01P", "SEX"] + [f"COL{i:02d}" for i in range(4, 49)]

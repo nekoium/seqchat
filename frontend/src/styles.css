@@ -14,7 +14,11 @@ header { max-width: 760px; margin-bottom: 36px; }
 .eyebrow, .section-label { color: #476855; font-size: .76rem; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
 h1 { margin: 6px 0 12px; font-family: Georgia, serif; font-size: clamp(2.8rem, 8vw, 5.4rem); font-weight: 500; letter-spacing: -.055em; line-height: .98; }
 .lede { color: #526057; font-size: 1.1rem; line-height: 1.65; }
-form, section, .error { border: 1px solid #d7d4ca; border-radius: 16px; background: rgba(255,255,255,.72); box-shadow: 0 14px 40px rgba(50, 58, 53, .06); }
+form, section, .error, .readiness { border: 1px solid #d7d4ca; border-radius: 16px; background: rgba(255,255,255,.72); box-shadow: 0 14px 40px rgba(50, 58, 53, .06); }
+.readiness { margin-bottom: 16px; padding: 14px 18px; }
+.readiness p { margin: 4px 0; line-height: 1.5; }
+.readiness.ready { border-color: #a9c7ae; color: #245d3c; background: #edf7ee; }
+.readiness.warning { border-color: #d9c18a; color: #725819; background: #fff9e9; }
 form { padding: 20px; margin-bottom: 24px; }
 label { display: block; margin-bottom: 10px; font-size: .9rem; font-weight: 700; }
 .input-row { display: flex; gap: 10px; }

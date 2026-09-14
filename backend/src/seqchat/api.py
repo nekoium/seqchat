@@ -9,14 +9,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from seqchat.llm import ChatModel, HttpxChatCompletionsModel, ProviderError
-from seqchat.models import ErrorDetail, ErrorResponse, GeneratedQuery, QueryRequest, QuerySuccess
+from seqchat.models import (
+    ErrorDetail,
+    ErrorResponse,
+    GeneratedQuery,
+    QueryRequest,
+    QuerySuccess,
+    ReadinessResponse,
+)
+from seqchat.readiness import assess_readiness
 from seqchat.settings import Settings
 from seqchat.workflow import QueryWorkflow
 
 
 class UnconfiguredModel:
+    def __init__(self, code: str = "model_not_configured") -> None:
+        self.code = code
+
     def generate_query(self, *, question: str, schema: str) -> GeneratedQuery:
-        raise ProviderError("The model provider is not configured")
+        message = (
+            "The model provider is not configured"
+            if self.code == "model_not_configured"
+            else "The model provider configuration is invalid"
+        )
+        raise ProviderError(self.code, message)
 
     def generate_answer(
         self,
@@ -26,7 +42,7 @@ class UnconfiguredModel:
         columns: list[str],
         rows: list[list[object]],
     ) -> str:
-        raise ProviderError("The model provider is not configured")
+        raise ProviderError(self.code, "The model provider is not configured")
 
 
 def create_app(
@@ -45,9 +61,12 @@ def create_app(
                     base_url=configured.llm_base_url,
                     api_key=configured.llm_api_key,
                     model=configured.llm_model,
+                    json_mode=configured.llm_json_mode,
                 )
             else:
-                model = UnconfiguredModel()
+                model = UnconfiguredModel(
+                    configured.provider_configuration_error or "model_not_configured"
+                )
             app.state.workflow = QueryWorkflow(configured.database_path, model)
         yield
 
@@ -69,7 +88,11 @@ def create_app(
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
-        return {"status": "healthy"}
+        return {"status": "alive"}
+
+    @app.get("/api/ready", response_model=ReadinessResponse)
+    def ready() -> ReadinessResponse:
+        return assess_readiness(configured)
 
     @app.post(
         "/api/query",
@@ -93,8 +116,9 @@ def create_app(
         error = result.get("error")
         if error is not None:
             status = 422 if error.code == "unsafe_sql" else 503
-            if error.code in {
-                "provider_error",
+            if error.code.startswith("provider_") or error.code in {
+                "model_not_configured",
+                "model_configuration_invalid",
                 "model_parse_error",
                 "generation_error",
                 "answer_error",

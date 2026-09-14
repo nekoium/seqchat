@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 seqchat-init-data = "seqchat.data:main"
+seqchat-check = "seqchat.check:main"
 
 [dependency-groups]
 dev = [
