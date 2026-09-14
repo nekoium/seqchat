@@ -30,6 +30,11 @@ interface ErrorPayload {
   }
 }
 
+function apiUrl(path: `/api/${string}`): string {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+  return baseUrl ? `${baseUrl.replace(/\/+$/, '')}${path}` : path
+}
+
 async function fetchOrBackendError(input: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(input, init)
@@ -89,7 +94,7 @@ function isReadiness(payload: unknown): payload is ReadinessResult {
 }
 
 export async function askQuestion(question: string): Promise<QueryResult> {
-  const response = await fetchOrBackendError('/api/query', {
+  const response = await fetchOrBackendError(apiUrl('/api/query'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
@@ -105,7 +110,7 @@ export async function askQuestion(question: string): Promise<QueryResult> {
 }
 
 export async function getReadiness(): Promise<ReadinessResult> {
-  const response = await fetchOrBackendError('/api/ready')
+  const response = await fetchOrBackendError(apiUrl('/api/ready'))
   const payload = await parseJson(response)
   if (!response.ok || !isReadiness(payload)) {
     throw new Error('SeqChat could not read backend readiness.')

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { askQuestion } from '../src/api'
+import { askQuestion, getReadiness } from '../src/api'
 
 const success = {
   answer: 'Three groups.',
@@ -10,7 +10,69 @@ const success = {
   warnings: [],
 }
 
-afterEach(() => vi.restoreAllMocks())
+const readiness = {
+  status: 'ready',
+  components: {
+    backend: { status: 'ready', code: 'backend_ready', message: 'Backend is ready.' },
+    database: { status: 'ready', code: 'database_ready', message: 'Database is ready.' },
+    model: { status: 'ready', code: 'model_ready', message: 'Model is ready.' },
+  },
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllEnvs()
+})
+
+describe('API URLs', () => {
+  it('uses relative URLs when the API base URL is blank', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', '   ')
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(readiness), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(success), { status: 200 }))
+
+    await getReadiness()
+    await askQuestion('question')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/ready', undefined)
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/query', expect.any(Object))
+  })
+
+  it('uses absolute URLs when the API base URL is configured', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://seqchat-api.example.com')
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(readiness), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(success), { status: 200 }))
+
+    await getReadiness()
+    await askQuestion('question')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://seqchat-api.example.com/api/ready',
+      undefined,
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://seqchat-api.example.com/api/query',
+      expect.any(Object),
+    )
+  })
+
+  it('removes trailing slashes from the configured API base URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://seqchat-api.example.com/')
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(readiness), { status: 200 }),
+    )
+
+    await getReadiness()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://seqchat-api.example.com/api/ready',
+      undefined,
+    )
+  })
+})
 
 describe('query API handling', () => {
   it('classifies a rejected fetch as an unreachable backend', async () => {
